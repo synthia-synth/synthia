@@ -7,7 +7,7 @@ type ToneGenerator struct {
 	step float64
 }
 
-func NewToneGenerator(sampleRate float64) *Tone {
+func NewToneGenerator(sampleRate float64) *ToneGenerator {
 	if sampleRate < 1 {
 		return nil
 	}
@@ -19,10 +19,10 @@ func NewToneGenerator(sampleRate float64) *Tone {
 
 //Max's function - Given freq and delta t return an array for each step
 //Call Tone with freq and sec (floats) - return array
-func (t *ToneGenerator) Tone(freq, seconds float64) []int32{
-	var synthArray = make([]int32, int(duration*sampleRate)) //duration/step = dur*sR
+func (t *ToneGenerator) Tone(freq, seconds float64, vol int32) []int32{
+	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
 	for i:=0; i < len(synthArray); i++{
-		synthArray[i] = sin(freq * math.PI * i * step)
+		synthArray[i] = int32(float64(vol)*math.Sin(freq *2* math.Pi * float64(i) * t.step))
 	}
 	return synthArray
 }

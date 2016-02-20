@@ -35,12 +35,12 @@ const (
 	SemiBreve                  NoteLen = 4
 	Minim                      NoteLen = 2
 	Crotchet                   NoteLen = 1
-	Quaver                     NoteLen = 1 / 2
-	SemiQuaver                 NoteLen = 1 / 4
-	DemiSemiQuaver             NoteLen = 1 / 8
-	HemiDemiSemiQuaver         NoteLen = 1 / 16
-	SemiHemiDemiSemiQuaver     NoteLen = 1 / 32
-	DemiSemiHemiDemiSemiQuaver NoteLen = 1 / 64
+	Quaver                     NoteLen = 1.0 / 2
+	SemiQuaver                 NoteLen = 1.0 / 4
+	DemiSemiQuaver             NoteLen = 1.0 / 8
+	HemiDemiSemiQuaver         NoteLen = 1.0 / 16
+	SemiHemiDemiSemiQuaver     NoteLen = 1.0 / 32
+	DemiSemiHemiDemiSemiQuaver NoteLen = 1.0 / 64
 )
 
 type LenModifier float64
@@ -64,6 +64,7 @@ type Note struct {
 	length         NoteLen
 	lengthModifier LenModifier
 	octave         int
+	vol	int32
 }
 
 func setBPM(newBPM float64) {
@@ -76,7 +77,7 @@ func lengthToDuration(len NoteLen, modifier LenModifier) float64 {
 }
 
 func (n *Note) Frequency() float64 {
-	note := int(n.note)
+	note := int(n.note) + 12*n.octave
 	diff := float64(note - referencePoint)
 	diff += float64(n.accidental)
 	return referenceFreq * math.Pow(freqStep, diff)
@@ -90,5 +91,10 @@ func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, l
 	n.accidental = accidental
 	n.length = length
 	n.lengthModifier = lengthModifier
+	n.vol = 1<<30
 	return n
+}
+
+func (n *Note) GenerateTone(generator *ToneGenerator) []int32 {
+	return generator.Tone(n.Frequency(), lengthToDuration(n.length, n.lengthModifier), n.vol)
 }
