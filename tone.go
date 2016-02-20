@@ -4,7 +4,7 @@ import("math")
 
 type ToneGenerator struct {
 	sampleRate float64
-	step float64
+	step float64 //delta t
 }
 
 func NewToneGenerator(sampleRate float64) *ToneGenerator {
@@ -34,19 +34,16 @@ func (t *ToneGenerator) SinTone(freq, seconds float64, vol int32) []int32{
 func (t *ToneGenerator) SquareTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
 	var period = period(freq)
-	var n = int(seconds/period)
-	var m = seconds%period
 
+	//How many samples are there in a period
+	var samplesPerPeriod = int(period/t.step)
 
-	for i:=0; i < len(synthArray); i++{ //30%5 = 0 < 4/2 = 2
-		if i%period < period/2 { //Width: first half = 1, second = 0
-			synthArray[i] = 1
-		} else {
-			synthArray[i] = 0
-		}
-	}
 	for i:=0; i < len(synthArray); i++{
-		synthArray[i] = int32(float64(vol)*math.Sin(freq *2* math.Pi * float64(i) * t.step))
+		if i%samplesPerPeriod < samplesPerPeriod/2 { //Width: first half = 1, second = 0
+			synthArray[i] = vol
+		} else {
+			synthArray[i] = -vol
+		}
 	}
 	return synthArray
 }
