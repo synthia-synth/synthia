@@ -1,5 +1,5 @@
 package main
-import("fmt", "math")
+import("math")
 
 
 type ToneGenerator struct {
