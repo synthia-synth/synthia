@@ -8,15 +8,12 @@ const DefaultSampleRate = 44100
 func main() {
 	var sampleRate float64 = DefaultSampleRate
 	setBPM(110)
-	song := genFast()
+	song := genTwinkle()
 	var tune []int32
 	toneGenerator := NewToneGenerator(sampleRate)
-	println("Synthesizing Song")
 	for _, n := range(song) {
 		tune = append(tune, n.GenerateTone(toneGenerator)...)
 	}
-	println("A_4 is ", song[0].Frequency())
-	println("Playing...")
 	playTune(tune, sampleRate)
 }
 
