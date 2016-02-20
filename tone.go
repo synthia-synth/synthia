@@ -68,11 +68,10 @@ func (t *ToneGenerator) SawTone(freq, seconds float64, vol int32) []int32{
 func (t *ToneGenerator) TriTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
 	var period, samplesPerPeriod = period(freq)
-	//Find one period
-	//Width: first half = 1, second = 0
-	//Repeat n.m times
-	for i:=0; i < len(synthArray); i++{
-		synthArray[i] = int32(float64(vol)*math.Sin(freq *2* math.Pi * float64(i) * t.step))
+
+
+	for i:=0; i < len(synthArray); i++{ //Rise then fall
+
 	}
 	return synthArray
 }
