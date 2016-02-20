@@ -47,6 +47,7 @@ type LenModifier float64
 
 const (
 	Dotted LenModifier = 1.5
+	NormalLength = 1
 )
 
 const (
@@ -79,4 +80,14 @@ func (n *Note) Frequency() float64 {
 	diff := float64(n - referencePoint)
 	diff += float64(n.accidental)
 	return referenceFreq * math.Pow(freqStep, diff)
+}
+
+
+func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, lengthModifier LenModifier) *Note{
+	n := new(Note)
+	n.note = note
+	n.octave = octave
+	n.accidental = accidental
+	n.length = length
+	n.lengthModifier = lengthModifier
 }
