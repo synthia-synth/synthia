@@ -12,7 +12,7 @@ func playTune(tune []int32, sampleRate float64) error {
 	defer portaudio.Terminate()
 	buffer := make([]int32, len(tune))
 	copy(buffer, tune)
-	stream, err := portaudio.OpenDefaultStream(0, 1, samplerate, len(buffer), &buffer)
+	stream, err := portaudio.OpenDefaultStream(0, 1, sampleRate, len(buffer), &buffer)
 	if err != nil {
 		return err
 	}

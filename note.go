@@ -61,7 +61,7 @@ var bpm, beatLength float64
 type Note struct {
 	note           NoteName
 	accidental     Accidental
-	length         NoteLength
+	length         NoteLen
 	lengthModifier LenModifier
 	octave         int
 }
@@ -76,8 +76,8 @@ func lengthToDuration(len NoteLen, modifier LenModifier) float64 {
 }
 
 func (n *Note) Frequency() float64 {
-	n := int(n.note)
-	diff := float64(n - referencePoint)
+	note := int(n.note)
+	diff := float64(note - referencePoint)
 	diff += float64(n.accidental)
 	return referenceFreq * math.Pow(freqStep, diff)
 }
@@ -90,4 +90,5 @@ func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, l
 	n.accidental = accidental
 	n.length = length
 	n.lengthModifier = lengthModifier
+	return n
 }
