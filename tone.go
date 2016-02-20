@@ -33,10 +33,7 @@ func (t *ToneGenerator) SinTone(freq, seconds float64, vol int32) []int32{
 //Generates a square wave
 func (t *ToneGenerator) SquareTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
-	var period = period(freq)
-
-	//How many samples are there in a period
-	var samplesPerPeriod = int(period/t.step)
+	var period, samplesPerPeriod = period(freq)
 
 	for i:=0; i < len(synthArray); i++{
 		if i%samplesPerPeriod < samplesPerPeriod/2 { //Width: first half = 1, second = 0
@@ -51,11 +48,18 @@ func (t *ToneGenerator) SquareTone(freq, seconds float64, vol int32) []int32{
 //Generates a saw wave
 func (t *ToneGenerator) SawTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
-	//Find one period
-	//Width: first half = 1, second = 0
-	//Repeat n.m times
+	var period, samplesPerPeriod = period(freq)
+
+	//from -vol to vol linearly for one period
+	var ramp = 2*vol/samplesPerPeriod
+	var val = -vol
 	for i:=0; i < len(synthArray); i++{
-		synthArray[i] = int32(float64(vol)*math.Sin(freq *2* math.Pi * float64(i) * t.step))
+		if val < samplesPerPeriod{
+			val = val + ramp
+		} else{ //Reset
+			val = -vol
+		}
+		synthArray[i] = val
 	}
 	return synthArray
 }
@@ -63,6 +67,7 @@ func (t *ToneGenerator) SawTone(freq, seconds float64, vol int32) []int32{
 //Generates a triangle wave
 func (t *ToneGenerator) TriTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
+	var period, samplesPerPeriod = period(freq)
 	//Find one period
 	//Width: first half = 1, second = 0
 	//Repeat n.m times
@@ -73,6 +78,6 @@ func (t *ToneGenerator) TriTone(freq, seconds float64, vol int32) []int32{
 }
 
 
-func period(freq float64) float64{
-	return 1.0/freq 
+func period(freq float64) (float64, int){
+	return 1.0/freq, int(period/t.step)
 }
