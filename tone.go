@@ -27,6 +27,7 @@ func (t *ToneGenerator) Tone(freq, seconds float64, vol int32) []int32{
 
 	for i:=0; i < len(synthArray); i++ {
 		synthArray[i]=int32(t.wave(float64(i)*t.step)*float64(vol));
+
 	}
 	return synthArray
 }
