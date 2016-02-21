@@ -17,3 +17,17 @@ func Tri(x float64) float64 {
   	return (xMod*4. - 3.)
   }
 }
+
+func Sqr(x float64) float64) {
+	xMod:= math.Remainder(x,1)
+	if xMod>0.5 {
+  	return 1
+  else {
+  	return -1
+  }
+}
+
+func Saw(x float64) float64) {
+	return math.Remainder((x-0.5)*2,2)-1;
+}
+
