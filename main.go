@@ -1,7 +1,14 @@
 package main
+import(
+	"github.com/draringi/synthia/waveforms"
+	)
+
 
 //go:generate -command yacc go tool yacc
 //go:generate yacc -o lang.go -p "lang" lang.y
+
+
+import ("fmt")
 
 const DefaultSampleRate = 44100
 
@@ -10,8 +17,9 @@ func main() {
 	setBPM(110)
 	song := genTwinkle()
 	var tune []int32
-	toneGenerator := NewToneGenerator(sampleRate)
-	for _, n := range(song) {
+	toneGenerator := NewToneGenerator(sampleRate,waveforms.Sin)
+	for i, n := range(song) {
+		fmt.Printf("%v\n", i)
 		tune = append(tune, n.GenerateTone(toneGenerator)...)
 	}
 	playTune(tune, sampleRate)
