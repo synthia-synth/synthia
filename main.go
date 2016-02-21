@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/draringi/synthia/waveforms"
+	"flag"
+	"io/ioutil"
 )
 
 //go:generate -command yacc go tool yacc
@@ -10,24 +11,35 @@ import (
 
 const DefaultSampleRate = 44100
 
-func main() {
-	var sampleRate float64 = DefaultSampleRate
-	setBPM(110)
-	song := genTwinkle()
-	var tune []int32
-	toneGenerator := NewToneGenerator(sampleRate, waveforms.Saw)
-	for _, n := range song {
-		tune = append(tune, n.GenerateTone(toneGenerator)...)
-	}
+var glsampleRate float64 = DefaultSampleRate
 
-	var testFilter = NewLowPassFilter(11)
-	fmt.Printf("%v\n", testFilter.window)
-	var filter = NewLowPassFilter(301)
-	tune = filter.Filter(tune)
-	fmt.Printf("%v\n", len(tune))
-	if playTune(tune, sampleRate) == nil {
-		fmt.Printf("all ended correctly\n")
+func usage(){
+	fmt.Println("synthia: The synth which goes...")
+	fmt.Println("Usage: synthia FILE")
+}
+
+func main() {
+	flag.Parse()
+	args := flag.Args()
+	if len(args) < 1{
+		usage()
+		return
 	}
+	path := args[0]
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		println(err)
+		return
+	}
+	langParse(&langLex{line: data})
+	
+	ast.Exec()
+	tune := ast.Tune()
+	
+	//var filter = NewLowPassFilter(301)
+	//tune = filter.Filter(tune)
+	fmt.Printf("%v\n", len(tune))
+	playTune(tune, glsampleRate)
 
 }
 

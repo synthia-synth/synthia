@@ -47,7 +47,7 @@ var line int = 1
 %%
 
 top: head_list
-	{ $$ = $1 }
+	{ ast = AST($1) }
 	
 
 head_list:
@@ -301,7 +301,7 @@ func (x *langLex) label(c rune, yylval *langSymType) int {
 		} else {
 			x.peek = c
 		}
-		yylval.expr = &noteExpression{ note: note, octave: octave, accidental: acc }
+		yylval.note = &noteExpression{ note: note, octave: octave, accidental: acc }
 		return NOTE
 	}
 	if b.String() == "stream" {

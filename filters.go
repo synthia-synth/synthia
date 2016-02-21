@@ -5,8 +5,8 @@ import (
 )
 
 func adsr1(signal []int32) []int32 {
-	const riseSamples, decaySamples, releaseSamples = 20, 40, 10
-	const sustainLvl = .8
+	const riseSamples, decaySamples, releaseSamples = 200, 400, 200
+	const sustainLvl = .7
 	var baseNeed = int(riseSamples + decaySamples + releaseSamples)
 
 	//Constant rise 0->1

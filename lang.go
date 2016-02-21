@@ -221,7 +221,7 @@ L:
 		} else {
 			x.peek = c
 		}
-		yylval.expr = &noteExpression{note: note, octave: octave, accidental: acc}
+		yylval.note = &noteExpression{note: note, octave: octave, accidental: acc}
 		return NOTE
 	}
 	if b.String() == "stream" {
@@ -704,7 +704,7 @@ langdefault:
 		langDollar = langS[langpt-1 : langpt+1]
 		//line lang.y:50
 		{
-			langVAL.headers = langDollar[1].headers
+			ast = AST(langDollar[1].headers)
 		}
 	case 2:
 		langDollar = langS[langpt-2 : langpt+1]

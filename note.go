@@ -95,5 +95,5 @@ func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, l
 }
 
 func (n *Note) GenerateTone(generator *ToneGenerator) []int32 {
-	return generator.Tone(n.Frequency(), lengthToDuration(n.length, n.lengthModifier), n.vol)
+	return adsr1(generator.Tone(n.Frequency(), lengthToDuration(n.length, n.lengthModifier), n.vol))
 }

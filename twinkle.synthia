@@ -4,7 +4,7 @@ i= tone.sin
 
 
 stream base {
-	i.play((C[5], A[2]), crotchet)
+	i.play(C[5], crotchet)
 	i.play(C[5], crotchet)
 	i.play(G[5], crotchet)
 	i.play(G[5].sharp, crotchet)
