@@ -69,9 +69,16 @@ func (t *ToneGenerator) TriTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
 	var period, samplesPerPeriod = period(freq)
 
-
+	var ramp = vol/samplesPerPeriod
+	var val = -vol
 	for i:=0; i < len(synthArray); i++{ //Rise then fall
-
+		if val < samplesPerPeriod/2{
+			val = val + ramp
+		}
+		else{
+			val = val - ramp
+		}
+		synthArray[i] = val
 	}
 	return synthArray
 }
