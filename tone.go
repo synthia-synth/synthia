@@ -32,7 +32,7 @@ func (t *ToneGenerator) SinTone(freq, seconds float64, vol int32) []int32{
 
 //Generates a square wave
 func (t *ToneGenerator) SquareTone(freq, seconds float64, vol int32) []int32{
-	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
+	var synthArray = make([]int32, int(seconds*t.sampleRate))
 	var period, samplesPerPeriod = period(freq)
 
 	for i:=0; i < len(synthArray); i++{
@@ -47,7 +47,7 @@ func (t *ToneGenerator) SquareTone(freq, seconds float64, vol int32) []int32{
 
 //Generates a saw wave
 func (t *ToneGenerator) SawTone(freq, seconds float64, vol int32) []int32{
-	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
+	var synthArray = make([]int32, int(seconds*t.sampleRate))
 	var period, samplesPerPeriod = period(freq)
 
 	//from -vol to vol linearly for one period
@@ -68,10 +68,11 @@ func (t *ToneGenerator) SawTone(freq, seconds float64, vol int32) []int32{
 func (t *ToneGenerator) TriTone(freq, seconds float64, vol int32) []int32{
 	var synthArray = make([]int32, int(seconds*t.sampleRate)) //duration/step = dur*sR
 	var period, samplesPerPeriod = period(freq)
-
+	
+	//Rise (add ramp) then fall (sub ramp)
 	var ramp = vol/samplesPerPeriod
 	var val = -vol
-	for i:=0; i < len(synthArray); i++{ //Rise then fall
+	for i:=0; i < len(synthArray); i++{ 
 		if val < samplesPerPeriod/2{
 			val = val + ramp
 		}
