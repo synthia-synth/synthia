@@ -5,14 +5,15 @@ import (
 	"fmt"
 )
 
+const playBufferSize = 8192
+
 func playTune(tune []int32, sampleRate float64) error {
 	err := portaudio.Initialize()
 	if err != nil {
 		return err
 	}
 	defer portaudio.Terminate()
-	buffer := make([]int32, len(tune))
-	copy(buffer, tune)
+	buffer := make([]int32, playBufferSize)
 	fmt.Printf("%v\n", len(buffer))
 	stream, err := portaudio.OpenDefaultStream(0, 1, sampleRate, len(buffer), &buffer)
 	if err != nil {
@@ -24,9 +25,17 @@ func playTune(tune []int32, sampleRate float64) error {
 		return err
 	}
 	defer stream.Stop()
-	err = stream.Write()
-	if err != nil {
-		return err
+	for i := 0; i < len(tune); i += len(buffer) {
+		end := i + playBufferSize
+		if end > len(tune){
+			copy(buffer, tune[i:])
+		} else {
+			copy(buffer, tune[i:end])
+		}
+		err = stream.Write()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
