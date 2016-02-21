@@ -3,6 +3,9 @@ package main
 import (
 	"github.com/draringi/synthia/waveforms"
 )
+var (
+	
+)
 
 type astStream struct {
 	instructions []instruction
@@ -31,19 +34,30 @@ func (e *chordExpression) Type() string {
 	return "Chord"
 }
 
+
+func (e *chordExpression) IsNotes() bool {
+	return true
+}
+
 type noteExpression struct {
 	note NoteName
 	octave int
 	accidental Accidental
 }
 
-type tonePlayMethod struct {
-	timing *timingExpression
-	notes expression
-}
-
 func (e *noteExpression) Type() string {
 	return "Note"
+}
+
+func (e *noteExpression) IsNotes() bool {
+	return true
+}
+
+type tonePlayMethod struct {
+	timing *timingExpression
+	notes interface {
+		IsNotes() bool
+	}
 }
 
 type timingExpression struct {
@@ -71,6 +85,10 @@ type instrumentInstance struct {
 type instrument interface {
 	Name() string
 	Type() string
+}
+
+type voice struct {
+	voiceData interface{}
 }
 
 type tone struct {
