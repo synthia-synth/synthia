@@ -46,8 +46,8 @@ const (
 type LenModifier float64
 
 const (
-	Dotted LenModifier = 1.5
-	NormalLength = 1
+	Dotted       LenModifier = 1.5
+	NormalLength             = 1
 )
 
 const (
@@ -64,7 +64,7 @@ type Note struct {
 	length         NoteLen
 	lengthModifier LenModifier
 	octave         int
-	vol	int32
+	vol            int32
 }
 
 func setBPM(newBPM float64) {
@@ -83,15 +83,14 @@ func (n *Note) Frequency() float64 {
 	return referenceFreq * math.Pow(freqStep, diff)
 }
 
-
-func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, lengthModifier LenModifier) *Note{
+func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, lengthModifier LenModifier) *Note {
 	n := new(Note)
 	n.note = note
 	n.octave = octave
 	n.accidental = accidental
 	n.length = length
 	n.lengthModifier = lengthModifier
-	n.vol = 1<<30
+	n.vol = 1 << 30
 	return n
 }
 

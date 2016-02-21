@@ -1,9 +1,9 @@
 package main
-import(
-	"github.com/draringi/synthia/waveforms"
-	"fmt"
-	)
 
+import (
+	"fmt"
+	"github.com/draringi/synthia/waveforms"
+)
 
 //go:generate -command yacc go tool yacc
 //go:generate yacc -o lang.go -p "lang" lang.y
@@ -15,20 +15,20 @@ func main() {
 	setBPM(110)
 	song := genTwinkle()
 	var tune []int32
-	toneGenerator := NewToneGenerator(sampleRate,waveforms.Saw)
-	for _, n := range(song) {
+	toneGenerator := NewToneGenerator(sampleRate, waveforms.Saw)
+	for _, n := range song {
 		tune = append(tune, n.GenerateTone(toneGenerator)...)
 	}
-	
+
 	var testFilter = NewLowPassFilter(11)
 	fmt.Printf("%v\n", testFilter.window)
 	var filter = NewLowPassFilter(301)
 	tune = filter.Filter(tune)
 	fmt.Printf("%v\n", len(tune))
-	if(playTune(tune, sampleRate)==nil) {
-		fmt.Printf("all ended correctly\n");
+	if playTune(tune, sampleRate) == nil {
+		fmt.Printf("all ended correctly\n")
 	}
-	
+
 }
 
 func genTwinkle() []*Note {
@@ -40,7 +40,7 @@ func genTwinkle() []*Note {
 	song = append(song, NewNote(A, 5, AccidentalNatural, Crotchet, NormalLength))
 	song = append(song, NewNote(A, 5, AccidentalNatural, Crotchet, NormalLength))
 	song = append(song, NewNote(G, 5, AccidentalNatural, Minim, NormalLength))
-		song = append(song, NewNote(C, 5, AccidentalNatural, Crotchet, NormalLength))
+	song = append(song, NewNote(C, 5, AccidentalNatural, Crotchet, NormalLength))
 	song = append(song, NewNote(A, 5, AccidentalNatural, Crotchet, NormalLength))
 	song = append(song, NewNote(G, 5, AccidentalNatural, Crotchet, NormalLength))
 	song = append(song, NewNote(B, 5, 0.1, Crotchet, NormalLength))

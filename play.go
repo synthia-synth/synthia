@@ -25,7 +25,7 @@ func playTune(tune []int32, sampleRate float64) error {
 	defer stream.Stop()
 	for i := 0; i < len(tune); i += len(buffer) {
 		end := i + playBufferSize
-		if end > len(tune){
+		if end > len(tune) {
 			copy(buffer, tune[i:])
 		} else {
 			copy(buffer, tune[i:end])
