@@ -4,7 +4,14 @@ package main
 import __yyfmt__ "fmt"
 
 //line lang.y:2
-//line lang.y:6
+import (
+	"bytes"
+	"log"
+	"strconv"
+	"unicode/utf8"
+)
+
+//line lang.y:11
 type langSymType struct {
 	yys          int
 	stream       *astStream
@@ -14,12 +21,14 @@ type langSymType struct {
 	expr         expression
 	expressions  []expression
 	integer      int
+	instumentDef instrument
 }
 
 const STREAM = 57346
 const LABEL = 57347
 const NUM = 57348
 const NOTE = 57349
+const TIMING = 57350
 
 var langToknames = [...]string{
 	"$end",
@@ -32,10 +41,13 @@ var langToknames = [...]string{
 	"'['",
 	"']'",
 	"'.'",
+	"'='",
+	"'\\n'",
 	"STREAM",
 	"LABEL",
 	"NUM",
 	"NOTE",
+	"TIMING",
 }
 var langStatenames = [...]string{}
 
@@ -43,7 +55,135 @@ const langEofCode = 1
 const langErrCode = 2
 const langInitialStackSize = 16
 
-//line lang.y:66
+//line lang.y:99
+
+// The parser expects the lexer to return 0 on EOF.  Give it a name
+// for clarity.
+const eof = 0
+
+// The parser uses the type <prefix>Lex as a lexer.  It must provide
+// the methods Lex(*<prefix>SymType) int and Error(string).
+type exprLex struct {
+	line []byte
+	peek rune
+}
+
+// The parser calls this method to get each new token.  This
+// implementation returns operators and NUM.
+func (x *exprLex) Lex(yylval *langSymType) int {
+	for {
+		c := x.next()
+		switch c {
+		case eof:
+			return eof
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			return x.num(c, yylval)
+		case '+', '-', '*', '/', '(', ')', '\n', '[', ']', '.', '{', '}':
+			return int(c)
+
+		// Recognize Unicode multiplication and division
+		// symbols, returning what the parser expects.
+		case '×':
+			return '*'
+		case '÷':
+			return '/'
+
+		case ' ', '\t', '\r':
+		default:
+			return x.label(c, yylval)
+		}
+	}
+}
+
+// Lex a number.
+func (x *exprLex) num(c rune, yylval *langSymType) int {
+	add := func(b *bytes.Buffer, c rune) {
+		if _, err := b.WriteRune(c); err != nil {
+			log.Fatalf("WriteRune: %s", err)
+		}
+	}
+	var b bytes.Buffer
+	add(&b, c)
+L:
+	for {
+		c = x.next()
+		switch c {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			add(&b, c)
+		default:
+			break L
+		}
+	}
+	if c != eof {
+		x.peek = c
+	}
+	var err error
+	yylval.integer, err = strconv.Atoi(b.String())
+	if err != nil {
+		log.Fatalf("bad number %q, error: %s", b.String(), err)
+		return eof
+	}
+	return NUM
+}
+
+func (x *exprLex) label(c rune, yylval *langSymType) int {
+	add := func(b *bytes.Buffer, c rune) {
+		if _, err := b.WriteRune(c); err != nil {
+			log.Fatalf("WriteRune: %s", err)
+		}
+	}
+	var b bytes.Buffer
+	add(&b, c)
+L:
+	for {
+		c = x.next()
+		switch c {
+		case ' ', '.', '\t', '+', '-', '*', '/', '(', ')', '\n', '[', ']', '{', '}', eof:
+			break L
+		default:
+			add(&b, c)
+		}
+	}
+	if c != eof {
+		x.peek = c
+	}
+
+	yylval.str = b.String()
+	timing, isTiming := timingLookup[yylval.str]
+	if isTiming {
+		modifier := NormalLength
+		if c == '.' {
+			modifier = Dotted
+		}
+		yylval.expr = &timingExpression{timing: timing, modifier: modifier}
+		return TIMING
+	}
+	return NUM
+}
+
+// Return the next rune for the lexer.
+func (x *exprLex) next() rune {
+	if x.peek != eof {
+		r := x.peek
+		x.peek = eof
+		return r
+	}
+	if len(x.line) == 0 {
+		return eof
+	}
+	c, size := utf8.DecodeRune(x.line)
+	x.line = x.line[size:]
+	if c == utf8.RuneError && size == 1 {
+		log.Print("invalid utf8")
+		return x.next()
+	}
+	return c
+}
+
+// The parser calls this method on a parse error.
+func (x *exprLex) Error(s string) {
+	log.Printf("parse error: %s", s)
+}
 
 //line yacctab:1
 var langExca = [...]int{
@@ -52,59 +192,66 @@ var langExca = [...]int{
 	-2, 0,
 }
 
-const langNprod = 8
+const langNprod = 13
 const langPrivate = 57344
 
 var langTokenNames []string
 var langStates []string
 
-const langLast = 22
+const langLast = 41
 
 var langAct = [...]int{
 
-	16, 15, 14, 19, 11, 8, 7, 10, 3, 15,
-	7, 2, 20, 18, 4, 6, 17, 12, 13, 5,
-	1, 9,
+	17, 16, 31, 19, 18, 20, 29, 30, 24, 8,
+	22, 2, 19, 18, 20, 15, 7, 25, 19, 18,
+	20, 7, 3, 14, 12, 28, 10, 27, 32, 25,
+	11, 13, 26, 4, 6, 23, 21, 5, 1, 0,
+	9,
 }
 var langPact = [...]int{
 
-	0, -1000, -4, 8, -6, -2, -1000, -3, -1000, -1000,
-	-8, 13, -13, -5, -1000, 5, -1000, -1000, -10, 3,
-	-1000,
+	-2, -1000, 8, 27, 7, 2, 14, 20, -1000, 11,
+	-1000, 1, -12, -4, -1000, 31, 3, -1000, 24, -1000,
+	-1000, -1000, 17, -12, -1000, -1000, -9, -7, -3, 19,
+	-1000, -1000, -1000,
 }
 var langPgo = [...]int{
 
-	0, 20, 19, 15, 2, 18,
+	0, 38, 37, 34, 0, 1, 36,
 }
 var langR1 = [...]int{
 
-	0, 1, 2, 2, 3, 5, 5, 4,
+	0, 1, 2, 2, 3, 3, 3, 6, 5, 5,
+	4, 4, 4,
 }
 var langR2 = [...]int{
 
-	0, 5, 1, 2, 6, 1, 2, 4,
+	0, 5, 2, 3, 6, 4, 3, 3, 1, 2,
+	4, 1, 1,
 }
 var langChk = [...]int{
 
-	-1000, -1, 11, 12, 6, -2, -3, 12, 7, -3,
-	10, 12, 4, -5, -4, 14, 5, -4, 8, 13,
-	9,
+	-1000, -1, 13, 14, 6, -2, -3, 14, 7, -3,
+	12, 10, 4, 11, 12, 14, -5, -4, 16, 15,
+	17, -6, 14, 4, 5, -4, 8, 10, -5, 15,
+	14, 5, 9,
 }
 var langDef = [...]int{
 
-	0, -2, 0, 0, 0, 0, 2, 0, 1, 3,
-	0, 0, 0, 0, 5, 0, 4, 6, 0, 0,
-	7,
+	0, -2, 0, 0, 0, 0, 0, 0, 1, 0,
+	2, 0, 0, 0, 3, 0, 0, 8, 0, 11,
+	12, 6, 0, 0, 5, 9, 0, 0, 0, 0,
+	7, 4, 10,
 }
 var langTok1 = [...]int{
 
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	12, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	4, 5, 3, 3, 3, 3, 10, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 11, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 8, 3, 9, 3, 3, 3, 3, 3, 3,
@@ -114,7 +261,7 @@ var langTok1 = [...]int{
 }
 var langTok2 = [...]int{
 
-	2, 3, 11, 12, 13, 14,
+	2, 3, 13, 14, 15, 16, 17,
 }
 var langTok3 = [...]int{
 	0,
@@ -459,45 +606,79 @@ langdefault:
 
 	case 1:
 		langDollar = langS[langpt-5 : langpt+1]
-		//line lang.y:31
+		//line lang.y:39
 		{
 			langVAL.stream = &astStream{label: langDollar[2].str, instructions: langDollar[4].instructions}
 		}
 	case 2:
-		langDollar = langS[langpt-1 : langpt+1]
-		//line lang.y:37
+		langDollar = langS[langpt-2 : langpt+1]
+		//line lang.y:45
 		{
 			langVAL.instructions = []instruction{langDollar[1].inst}
 		}
 	case 3:
-		langDollar = langS[langpt-2 : langpt+1]
-		//line lang.y:41
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:49
 		{
 			langVAL.instructions = append(langDollar[1].instructions, langDollar[2].inst)
 		}
 	case 4:
 		langDollar = langS[langpt-6 : langpt+1]
-		//line lang.y:47
+		//line lang.y:55
 		{
 			langVAL.inst = &methodCall{obj: &object{label: langDollar[1].str}, method: langDollar[3].str, arguments: langDollar[5].expressions}
 		}
 	case 5:
+		langDollar = langS[langpt-4 : langpt+1]
+		//line lang.y:59
+		{
+			langVAL.inst = &functionCall{label: langDollar[1].str, arguments: langDollar[3].expressions}
+		}
+	case 6:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:63
+		{
+			langVAL.inst = &instrumentInstance{label: langDollar[1].str, inst: langDollar[3].instumentDef}
+		}
+	case 7:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:69
+		{
+			i, err := instrumentLookup(langDollar[1].str, langDollar[3].str)
+			if err != nil {
+				log.Fatalf("Instrument lookup with (%s,%s) failed: %s\n", langDollar[1].str, langDollar[3].str, err)
+			}
+			langVAL.instumentDef = i
+		}
+	case 8:
 		langDollar = langS[langpt-1 : langpt+1]
-		//line lang.y:53
+		//line lang.y:79
 		{
 			langVAL.expressions = []expression{langDollar[1].expr}
 		}
-	case 6:
+	case 9:
 		langDollar = langS[langpt-2 : langpt+1]
-		//line lang.y:57
+		//line lang.y:83
 		{
 			langVAL.expressions = append(langDollar[1].expressions, langDollar[2].expr)
 		}
-	case 7:
+	case 10:
 		langDollar = langS[langpt-4 : langpt+1]
-		//line lang.y:63
+		//line lang.y:89
 		{
 			langVAL.expr = &noteExpression{note: NoteName(langDollar[1].integer), octave: langDollar[3].integer}
+		}
+	case 11:
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:93
+		{
+			langVAL.expr = intExp(langDollar[1].integer)
+		}
+	case 12:
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:96
+		{
+			langVAL.expr = langDollar[1].expr
 		}
 	}
 	goto langstack /* stack new state and value */

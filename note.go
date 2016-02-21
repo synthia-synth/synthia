@@ -47,7 +47,7 @@ type LenModifier float64
 
 const (
 	Dotted       LenModifier = 1.5
-	NormalLength             = 1
+	NormalLength LenModifier = 1
 )
 
 const (
