@@ -15,14 +15,13 @@ func main() {
 	setBPM(110)
 	song := genTwinkle()
 	var tune []int32
-	toneGenerator := NewToneGenerator(sampleRate,waveforms.Saw)
-	for i, n := range(song) {
-		fmt.Printf("%v\n", i)
+	toneGenerator := NewToneGenerator(sampleRate,waveforms.Sqr)
+	for _, n := range(song) {
 		tune = append(tune, n.GenerateTone(toneGenerator)...)
 	}
 	fmt.Printf("%v\n", len(tune))
 	if(playTune(tune, sampleRate)==nil) {
-		fmt.Printf("all ended correctly");
+		fmt.Printf("all ended correctly\n");
 	}
 	
 }
