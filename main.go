@@ -32,13 +32,9 @@ func main() {
 		return
 	}
 	langParse(&langLex{line: data})
-	
 	ast.Exec()
 	tune := ast.Tune()
-	
-	//var filter = NewLowPassFilter(301)
-	//tune = filter.Filter(tune)
-	fmt.Printf("%v\n", len(tune))
+	fmt.Println("Tune Generated. Playing...")
 	playTune(tune, glsampleRate)
 
 }
