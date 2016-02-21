@@ -199,11 +199,13 @@ var (
 	triwave    = &tone{wave: waveforms.Tri, name: "triangle"}
 	sawwave    = &tone{wave: waveforms.Saw, name: "saw"}
 	sqrwave    = &tone{wave: waveforms.Sqr, name: "square"}
+	nullwave    = &tone{wave: waveforms.Null, name: "null"}
 	toneLookup = map[string]instrument{
 		sinwave.name: sinwave,
 		triwave.name: triwave,
 		sawwave.name: sawwave,
 		sqrwave.name: sqrwave,
+		nullwave.name: nullwave,
 	}
 	instroModules = map[string]instrumentModule{
 		"tone": toneLookup,
