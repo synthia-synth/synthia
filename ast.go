@@ -5,11 +5,17 @@ import (
 	"github.com/draringi/synthia/waveforms"
 )
 
-var ()
+var (
+	depth int
+)
 
 type astStream struct {
 	instructions []instruction
 	label        string
+}
+
+func (s *astStream) Header() {
+	
 }
 
 type instruction interface {
@@ -31,7 +37,7 @@ type expression interface {
 }
 
 type chordExpression struct {
-	notes []noteExpression
+	notes []*noteExpression
 }
 
 func (e *chordExpression) Type() string {
@@ -91,6 +97,10 @@ func (f *functionCall) Exec() {
 
 }
 
+func (s *functionCall) Header() {
+	
+}
+
 type instrumentInstance struct {
 	label string
 	inst  instrument
@@ -98,6 +108,10 @@ type instrumentInstance struct {
 
 func (i *instrumentInstance) Exec() {
 
+}
+
+func (s *instrumentInstance) Header() {
+	
 }
 
 type instrument interface {
@@ -159,6 +173,15 @@ var (
 		"F": F,
 		"G": G,
 	}
+	accidentalLookup = map[string]Accidental {
+		"natural": AccidentalNatural,
+		"sharp": AccidentalSharp,
+		"flat": AccidentalFlat,
+		"doublesharp": AccidentalDoubleSharp,
+		"doubleflat": AccidentalDoubleFlat,
+		"halfsharp": AccidentalHalfSharp,
+		"halfflat": AccidentalHalfFlat,
+	}
 )
 
 func instrumentLookup(module, name string) (instrument, error) {
@@ -171,4 +194,8 @@ func instrumentLookup(module, name string) (instrument, error) {
 		return nil, errors.New("Invalid instrument name")
 	}
 	return i, nil
+}
+
+type header interface {
+	Header()
 }

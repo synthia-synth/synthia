@@ -11,7 +11,10 @@ import (
 	"unicode/utf8"
 )
 
-//line lang.y:11
+var stm = false
+var line int = 1
+
+//line lang.y:14
 type langSymType struct {
 	yys          int
 	stream       *astStream
@@ -22,13 +25,17 @@ type langSymType struct {
 	expressions  []expression
 	integer      int
 	instumentDef instrument
+	headers      []header
+	headerField  header
+	note         *noteExpression
+	notes        []*noteExpression
 }
 
 const STREAM = 57346
 const LABEL = 57347
 const NUM = 57348
-const NOTE = 57349
-const TIMING = 57350
+const TIMING = 57349
+const NOTE = 57350
 
 var langToknames = [...]string{
 	"$end",
@@ -42,20 +49,21 @@ var langToknames = [...]string{
 	"']'",
 	"'.'",
 	"'='",
-	"'\\n'",
+	"';'",
 	"STREAM",
 	"LABEL",
 	"NUM",
-	"NOTE",
 	"TIMING",
+	"NOTE",
+	"','",
 }
 var langStatenames = [...]string{}
 
 const langEofCode = 1
 const langErrCode = 2
-const langInitialStackSize = 16
+const langMaxDepth = 200
 
-//line lang.y:99
+//line lang.y:150
 
 // The parser expects the lexer to return 0 on EOF.  Give it a name
 // for clarity.
@@ -63,14 +71,14 @@ const eof = 0
 
 // The parser uses the type <prefix>Lex as a lexer.  It must provide
 // the methods Lex(*<prefix>SymType) int and Error(string).
-type exprLex struct {
+type langLex struct {
 	line []byte
 	peek rune
 }
 
 // The parser calls this method to get each new token.  This
 // implementation returns operators and NUM.
-func (x *exprLex) Lex(yylval *langSymType) int {
+func (x *langLex) Lex(yylval *langSymType) int {
 	for {
 		c := x.next()
 		switch c {
@@ -78,7 +86,7 @@ func (x *exprLex) Lex(yylval *langSymType) int {
 			return eof
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			return x.num(c, yylval)
-		case '+', '-', '*', '/', '(', ')', '\n', '[', ']', '.', '{', '}':
+		case '+', '-', '*', '/', '(', ')', ';', '[', ']', '.', '{', '}', '=', ',':
 			return int(c)
 
 		// Recognize Unicode multiplication and division
@@ -87,7 +95,12 @@ func (x *exprLex) Lex(yylval *langSymType) int {
 			return '*'
 		case '÷':
 			return '/'
-
+		case '\n':
+			if stm {
+				x.peek = ';'
+				stm = false
+			}
+			line++
 		case ' ', '\t', '\r':
 		default:
 			return x.label(c, yylval)
@@ -96,7 +109,7 @@ func (x *exprLex) Lex(yylval *langSymType) int {
 }
 
 // Lex a number.
-func (x *exprLex) num(c rune, yylval *langSymType) int {
+func (x *langLex) num(c rune, yylval *langSymType) int {
 	add := func(b *bytes.Buffer, c rune) {
 		if _, err := b.WriteRune(c); err != nil {
 			log.Fatalf("WriteRune: %s", err)
@@ -126,7 +139,7 @@ L:
 	return NUM
 }
 
-func (x *exprLex) label(c rune, yylval *langSymType) int {
+func (x *langLex) label(c rune, yylval *langSymType) int {
 	add := func(b *bytes.Buffer, c rune) {
 		if _, err := b.WriteRune(c); err != nil {
 			log.Fatalf("WriteRune: %s", err)
@@ -138,7 +151,7 @@ L:
 	for {
 		c = x.next()
 		switch c {
-		case ' ', '.', '\t', '+', '-', '*', '/', '(', ')', '\n', '[', ']', '{', '}', eof:
+		case ' ', '.', '\t', '+', '-', '*', '/', '(', ')', '\n', '[', ']', '{', '}', '=', ',', eof:
 			break L
 		default:
 			add(&b, c)
@@ -152,17 +165,73 @@ L:
 	timing, isTiming := timingLookup[yylval.str]
 	if isTiming {
 		modifier := NormalLength
+		c = x.next()
 		if c == '.' {
 			modifier = Dotted
+		} else {
+			x.peek = c
 		}
 		yylval.expr = &timingExpression{timing: timing, modifier: modifier}
 		return TIMING
 	}
-	return NUM
+	note, isNote := noteLookup[yylval.str]
+	if isNote {
+		c = x.next()
+		if c != '[' {
+			log.Fatalf("Invalid Note %s with no octave. Should be %s[n] where n is a single-digit integer\n", yylval.str, yylval.str)
+		}
+		c = x.next()
+		var octave int
+		switch c {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			var err error
+			octave, err = strconv.Atoi(string(c))
+			if err != nil {
+				log.Fatal("Critical Error: Integer is not an Integer!\n")
+			}
+		default:
+			log.Fatalf("Invalid Note %s with no octave. Should be %s[n] where n is a single-digit integer\n", yylval.str, yylval.str)
+		}
+		c = x.next()
+		if c != ']' {
+			log.Fatalf("Invalid Note %s with no octave. Should be %s[n] where n is a single-digit integer\n", yylval.str, yylval.str)
+		}
+		acc := AccidentalNatural
+		c = x.next()
+		if c == '.' {
+			var a bytes.Buffer
+		LA:
+			for {
+				c = x.next()
+				switch c {
+				case ' ', '.', '\t', '+', '-', '*', '/', '(', ')', '\n', '[', ']', '{', '}', ',', '=', eof:
+					break LA
+				default:
+					add(&a, c)
+				}
+			}
+			ac, isAccidental := accidentalLookup[a.String()]
+			if !isAccidental {
+				log.Fatalf("%s is not a valid accidental\n", a.String())
+			}
+			if c != eof {
+				x.peek = c
+			}
+			acc = ac
+		} else {
+			x.peek = c
+		}
+		yylval.expr = &noteExpression{note: note, octave: octave, accidental: acc}
+		return NOTE
+	}
+	if b.String() == "stream" {
+		return STREAM
+	}
+	return LABEL
 }
 
 // Return the next rune for the lexer.
-func (x *exprLex) next() rune {
+func (x *langLex) next() rune {
 	if x.peek != eof {
 		r := x.peek
 		x.peek = eof
@@ -181,8 +250,22 @@ func (x *exprLex) next() rune {
 }
 
 // The parser calls this method on a parse error.
-func (x *exprLex) Error(s string) {
-	log.Printf("parse error: %s", s)
+func (x *langLex) Error(s string) {
+	c := x.next()
+	var cString string
+	switch c {
+	case ' ':
+		cString = "space"
+	case '\n':
+		cString = "\\n"
+	case '\t':
+		cString = "\\t"
+	case eof:
+		cString = "EOF"
+	default:
+		cString = string(c)
+	}
+	log.Printf("parse error on line %d before character %s: %s", line, cString, s)
 }
 
 //line yacctab:1
@@ -192,65 +275,75 @@ var langExca = [...]int{
 	-2, 0,
 }
 
-const langNprod = 13
+const langNprod = 24
 const langPrivate = 57344
 
 var langTokenNames []string
 var langStates []string
 
-const langLast = 41
+const langLast = 54
 
 var langAct = [...]int{
 
-	17, 16, 31, 19, 18, 20, 29, 30, 24, 8,
-	22, 2, 19, 18, 20, 15, 7, 25, 19, 18,
-	20, 7, 3, 14, 12, 28, 10, 27, 32, 25,
-	11, 13, 26, 4, 6, 23, 21, 5, 1, 0,
-	9,
+	13, 21, 15, 30, 14, 20, 19, 50, 48, 33,
+	22, 24, 36, 6, 5, 23, 16, 17, 19, 31,
+	25, 25, 34, 27, 25, 44, 35, 31, 11, 40,
+	32, 43, 38, 37, 12, 39, 41, 42, 9, 8,
+	28, 45, 47, 46, 3, 10, 26, 7, 49, 2,
+	1, 18, 29, 4,
 }
 var langPact = [...]int{
 
-	-2, -1000, 8, 27, 7, 2, 14, 20, -1000, 11,
-	-1000, 1, -12, -4, -1000, 31, 3, -1000, 24, -1000,
-	-1000, -1000, 17, -12, -1000, -1000, -9, -7, -3, 19,
-	-1000, -1000, -1000,
+	0, -1000, 0, 27, -1000, 34, 14, 22, -1000, 1,
+	-4, 9, -1000, 6, -1000, -1000, -1000, -1000, -1000, -1000,
+	-11, -1000, 30, 13, -1000, 1, 4, -1000, 12, 5,
+	20, 25, -1000, -1000, -11, -1000, -1000, 19, -1000, 11,
+	1, -4, -1000, -1000, 38, 3, -1000, 1, -1000, 2,
+	-1000,
 }
 var langPgo = [...]int{
 
-	0, 38, 37, 34, 0, 1, 36,
+	0, 53, 52, 3, 4, 51, 0, 1, 50, 49,
+	44, 2, 46,
 }
 var langR1 = [...]int{
 
-	0, 1, 2, 2, 3, 3, 3, 6, 5, 5,
-	4, 4, 4,
+	0, 8, 9, 9, 10, 10, 10, 1, 2, 2,
+	3, 3, 3, 7, 6, 6, 4, 4, 4, 4,
+	5, 12, 12, 11,
 }
 var langR2 = [...]int{
 
-	0, 5, 2, 3, 6, 4, 3, 3, 1, 2,
-	4, 1, 1,
+	0, 1, 2, 3, 1, 4, 3, 5, 2, 3,
+	6, 4, 3, 3, 1, 3, 1, 1, 1, 1,
+	3, 1, 3, 1,
 }
 var langChk = [...]int{
 
-	-1000, -1, 13, 14, 6, -2, -3, 14, 7, -3,
-	12, 10, 4, 11, 12, 14, -5, -4, 16, 15,
-	17, -6, 14, 4, 5, -4, 8, 10, -5, 15,
-	14, 5, 9,
+	-1000, -8, -9, -10, -1, 14, 13, -10, 12, 4,
+	11, 14, 12, -6, -4, -11, 15, 16, -5, 17,
+	4, -7, 14, 6, 5, 18, -12, -11, 10, -2,
+	-3, 14, -4, 5, 18, 14, 7, -3, 12, 10,
+	4, 11, -11, 12, 14, -6, -7, 4, 5, -6,
+	5,
 }
 var langDef = [...]int{
 
-	0, -2, 0, 0, 0, 0, 0, 0, 1, 0,
-	2, 0, 0, 0, 3, 0, 0, 8, 0, 11,
-	12, 6, 0, 0, 5, 9, 0, 0, 0, 0,
-	7, 4, 10,
+	0, -2, 1, 0, 4, 0, 0, 0, 2, 0,
+	0, 0, 3, 0, 14, 16, 17, 18, 19, 23,
+	0, 6, 0, 0, 5, 0, 0, 21, 0, 0,
+	0, 0, 15, 20, 0, 13, 7, 0, 8, 0,
+	0, 0, 22, 9, 0, 0, 12, 0, 11, 0,
+	10,
 }
 var langTok1 = [...]int{
 
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	12, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	4, 5, 3, 3, 3, 3, 10, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	4, 5, 3, 3, 18, 3, 10, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 12,
 	3, 11, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -293,17 +386,18 @@ type langParser interface {
 }
 
 type langParserImpl struct {
-	lval  langSymType
-	stack [langInitialStackSize]langSymType
-	char  int
+	lookahead func() int
 }
 
 func (p *langParserImpl) Lookahead() int {
-	return p.char
+	return p.lookahead()
 }
 
 func langNewParser() langParser {
-	return &langParserImpl{}
+	p := &langParserImpl{
+		lookahead: func() int { return -1 },
+	}
+	return p
 }
 
 const langFlag = -1000
@@ -431,20 +525,22 @@ func langParse(langlex langLexer) int {
 
 func (langrcvr *langParserImpl) Parse(langlex langLexer) int {
 	var langn int
+	var langlval langSymType
 	var langVAL langSymType
 	var langDollar []langSymType
 	_ = langDollar // silence set and not used
-	langS := langrcvr.stack[:]
+	langS := make([]langSymType, langMaxDepth)
 
 	Nerrs := 0   /* number of errors */
 	Errflag := 0 /* error recovery flag */
 	langstate := 0
-	langrcvr.char = -1
-	langtoken := -1 // langrcvr.char translated into internal numbering
+	langchar := -1
+	langtoken := -1 // langchar translated into internal numbering
+	langrcvr.lookahead = func() int { return langchar }
 	defer func() {
 		// Make sure we report no lookahead when not parsing.
 		langstate = -1
-		langrcvr.char = -1
+		langchar = -1
 		langtoken = -1
 	}()
 	langp := -1
@@ -476,8 +572,8 @@ langnewstate:
 	if langn <= langFlag {
 		goto langdefault /* simple state */
 	}
-	if langrcvr.char < 0 {
-		langrcvr.char, langtoken = langlex1(langlex, &langrcvr.lval)
+	if langchar < 0 {
+		langchar, langtoken = langlex1(langlex, &langlval)
 	}
 	langn += langtoken
 	if langn < 0 || langn >= langLast {
@@ -485,9 +581,9 @@ langnewstate:
 	}
 	langn = langAct[langn]
 	if langChk[langn] == langtoken { /* valid shift */
-		langrcvr.char = -1
+		langchar = -1
 		langtoken = -1
-		langVAL = langrcvr.lval
+		langVAL = langlval
 		langstate = langn
 		if Errflag > 0 {
 			Errflag--
@@ -499,8 +595,8 @@ langdefault:
 	/* default state action */
 	langn = langDef[langstate]
 	if langn == -2 {
-		if langrcvr.char < 0 {
-			langrcvr.char, langtoken = langlex1(langlex, &langrcvr.lval)
+		if langchar < 0 {
+			langchar, langtoken = langlex1(langlex, &langlval)
 		}
 
 		/* look through exception table */
@@ -563,7 +659,7 @@ langdefault:
 			if langtoken == langEofCode {
 				goto ret1
 			}
-			langrcvr.char = -1
+			langchar = -1
 			langtoken = -1
 			goto langnewstate /* try again in the same state */
 		}
@@ -605,44 +701,86 @@ langdefault:
 	switch langnt {
 
 	case 1:
-		langDollar = langS[langpt-5 : langpt+1]
-		//line lang.y:39
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:50
 		{
-			langVAL.stream = &astStream{label: langDollar[2].str, instructions: langDollar[4].instructions}
+			langVAL.headers = langDollar[1].headers
 		}
 	case 2:
 		langDollar = langS[langpt-2 : langpt+1]
-		//line lang.y:45
+		//line lang.y:55
 		{
-			langVAL.instructions = []instruction{langDollar[1].inst}
+			langVAL.headers = []header{langDollar[1].headerField}
 		}
 	case 3:
 		langDollar = langS[langpt-3 : langpt+1]
-		//line lang.y:49
+		//line lang.y:59
 		{
-			langVAL.instructions = append(langDollar[1].instructions, langDollar[2].inst)
+			langVAL.headers = append(langDollar[1].headers, langDollar[2].headerField)
 		}
 	case 4:
-		langDollar = langS[langpt-6 : langpt+1]
-		//line lang.y:55
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:64
 		{
-			langVAL.inst = &methodCall{obj: &object{label: langDollar[1].str}, method: langDollar[3].str, arguments: langDollar[5].expressions}
+			stm = true
+			langVAL.headerField = langDollar[1].stream
 		}
 	case 5:
 		langDollar = langS[langpt-4 : langpt+1]
-		//line lang.y:59
+		//line lang.y:69
 		{
-			langVAL.inst = &functionCall{label: langDollar[1].str, arguments: langDollar[3].expressions}
+			stm = true
+			langVAL.headerField = &functionCall{label: langDollar[1].str, arguments: langDollar[3].expressions}
 		}
 	case 6:
 		langDollar = langS[langpt-3 : langpt+1]
-		//line lang.y:63
+		//line lang.y:74
 		{
-			langVAL.inst = &instrumentInstance{label: langDollar[1].str, inst: langDollar[3].instumentDef}
+			stm = true
+			langVAL.headerField = &instrumentInstance{label: langDollar[1].str, inst: langDollar[3].instumentDef}
 		}
 	case 7:
+		langDollar = langS[langpt-5 : langpt+1]
+		//line lang.y:81
+		{
+			langVAL.stream = &astStream{label: langDollar[2].str, instructions: langDollar[4].instructions}
+		}
+	case 8:
+		langDollar = langS[langpt-2 : langpt+1]
+		//line lang.y:87
+		{
+			langVAL.instructions = []instruction{langDollar[1].inst}
+		}
+	case 9:
 		langDollar = langS[langpt-3 : langpt+1]
-		//line lang.y:69
+		//line lang.y:91
+		{
+			langVAL.instructions = append(langDollar[1].instructions, langDollar[2].inst)
+		}
+	case 10:
+		langDollar = langS[langpt-6 : langpt+1]
+		//line lang.y:97
+		{
+			stm = true
+			langVAL.inst = &methodCall{obj: &object{label: langDollar[1].str}, method: langDollar[3].str, arguments: langDollar[5].expressions}
+		}
+	case 11:
+		langDollar = langS[langpt-4 : langpt+1]
+		//line lang.y:102
+		{
+			stm = true
+			langVAL.inst = &functionCall{label: langDollar[1].str, arguments: langDollar[3].expressions}
+		}
+	case 12:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:107
+		{
+			stm = true
+			langVAL.inst = &instrumentInstance{label: langDollar[1].str, inst: langDollar[3].instumentDef}
+		}
+	case 13:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:114
 		{
 			i, err := instrumentLookup(langDollar[1].str, langDollar[3].str)
 			if err != nil {
@@ -650,35 +788,65 @@ langdefault:
 			}
 			langVAL.instumentDef = i
 		}
-	case 8:
+	case 14:
 		langDollar = langS[langpt-1 : langpt+1]
-		//line lang.y:79
+		//line lang.y:124
 		{
 			langVAL.expressions = []expression{langDollar[1].expr}
 		}
-	case 9:
-		langDollar = langS[langpt-2 : langpt+1]
-		//line lang.y:83
+	case 15:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:128
 		{
-			langVAL.expressions = append(langDollar[1].expressions, langDollar[2].expr)
+			langVAL.expressions = append(langDollar[1].expressions, langDollar[3].expr)
 		}
-	case 10:
-		langDollar = langS[langpt-4 : langpt+1]
-		//line lang.y:89
-		{
-			langVAL.expr = &noteExpression{note: NoteName(langDollar[1].integer), octave: langDollar[3].integer}
-		}
-	case 11:
+	case 16:
 		langDollar = langS[langpt-1 : langpt+1]
-		//line lang.y:93
+		//line lang.y:133
+		{
+			langVAL.expr = langDollar[1].note
+		}
+	case 17:
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:134
 		{
 			langVAL.expr = intExp(langDollar[1].integer)
 		}
-	case 12:
+	case 18:
 		langDollar = langS[langpt-1 : langpt+1]
-		//line lang.y:96
+		//line lang.y:135
 		{
 			langVAL.expr = langDollar[1].expr
+		}
+	case 19:
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:136
+		{
+			langVAL.expr = langDollar[1].expr
+		}
+	case 20:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:139
+		{
+			langVAL.expr = &chordExpression{notes: langDollar[2].notes}
+		}
+	case 21:
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:142
+		{
+			langVAL.notes = []*noteExpression{langDollar[1].note}
+		}
+	case 22:
+		langDollar = langS[langpt-3 : langpt+1]
+		//line lang.y:143
+		{
+			langVAL.notes = append(langDollar[1].notes, langDollar[3].note)
+		}
+	case 23:
+		langDollar = langS[langpt-1 : langpt+1]
+		//line lang.y:147
+		{
+			langVAL.note = langDollar[1].note
 		}
 	}
 	goto langstack /* stack new state and value */
