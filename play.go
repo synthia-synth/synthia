@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gordonklaus/portaudio"
+	"github.com/Orion90/portaudio"
 )
 
 const playBufferSize = 8192
