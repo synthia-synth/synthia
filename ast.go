@@ -2,15 +2,15 @@ package main
 
 import (
 	"errors"
-	"github.com/draringi/synthia/waveforms"
+	"github.com/synthia-synth/synthia/waveforms"
 )
 
 var (
-	depth int
-	functions = map[string]function {
+	depth     int
+	functions = map[string]function{
 		"setBPM": (setBPMWrapper)(setBPM),
 	}
-	instruments map[string]*ToneGenerator = map[string]*ToneGenerator {}
+	instruments map[string]*ToneGenerator = map[string]*ToneGenerator{}
 )
 
 var ast AST
@@ -38,12 +38,12 @@ func (f setBPMWrapper) Exec(args []expression) {
 type astStream struct {
 	instructions []instruction
 	label        string
-	tune	[]int32
+	tune         []int32
 }
 
 func (s *astStream) Header() {
 	var tune []int32
-	for _, i := range(s.instructions){
+	for _, i := range s.instructions {
 		i.Exec()
 		tune = append(tune, i.(*methodCall).tune...)
 	}
@@ -58,7 +58,7 @@ type methodCall struct {
 	obj       *object
 	method    string
 	arguments []expression
-	tune []int32
+	tune      []int32
 }
 
 func (m *methodCall) Exec() {
@@ -76,7 +76,7 @@ func (m *methodCall) Exec() {
 	case *chordExpression:
 		chordInfo := play.(*chordExpression)
 		var notes [][]int32
-		for _, n := range(chordInfo.notes) {
+		for _, n := range chordInfo.notes {
 			print(n)
 			note := NewNote(n.note, n.octave, n.accidental, timing.timing, timing.modifier)
 			notes = append(notes, note.GenerateTone(gen))
@@ -199,12 +199,12 @@ var (
 	triwave    = &tone{wave: waveforms.Tri, name: "triangle"}
 	sawwave    = &tone{wave: waveforms.Saw, name: "saw"}
 	sqrwave    = &tone{wave: waveforms.Sqr, name: "square"}
-	nullwave    = &tone{wave: waveforms.Null, name: "null"}
+	nullwave   = &tone{wave: waveforms.Null, name: "null"}
 	toneLookup = map[string]instrument{
-		sinwave.name: sinwave,
-		triwave.name: triwave,
-		sawwave.name: sawwave,
-		sqrwave.name: sqrwave,
+		sinwave.name:  sinwave,
+		triwave.name:  triwave,
+		sawwave.name:  sawwave,
+		sqrwave.name:  sqrwave,
 		nullwave.name: nullwave,
 	}
 	instroModules = map[string]instrumentModule{
@@ -231,14 +231,14 @@ var (
 		"F": F,
 		"G": G,
 	}
-	accidentalLookup = map[string]Accidental {
-		"natural": AccidentalNatural,
-		"sharp": AccidentalSharp,
-		"flat": AccidentalFlat,
+	accidentalLookup = map[string]Accidental{
+		"natural":     AccidentalNatural,
+		"sharp":       AccidentalSharp,
+		"flat":        AccidentalFlat,
 		"doublesharp": AccidentalDoubleSharp,
-		"doubleflat": AccidentalDoubleFlat,
-		"halfsharp": AccidentalHalfSharp,
-		"halfflat": AccidentalHalfFlat,
+		"doubleflat":  AccidentalDoubleFlat,
+		"halfsharp":   AccidentalHalfSharp,
+		"halfflat":    AccidentalHalfFlat,
 	}
 )
 
@@ -260,9 +260,9 @@ type header interface {
 
 type AST []header
 
-func (a AST) Exec(){
+func (a AST) Exec() {
 	headers := ([]header)(a)
-	for _, h := range(headers) {
+	for _, h := range headers {
 		h.Header()
 	}
 }
@@ -270,13 +270,12 @@ func (a AST) Exec(){
 func (a AST) Tune() []int32 {
 	var tunes [][]int32
 	headers := ([]header)(a)
-	for _, h := range(headers) {
+	for _, h := range headers {
 		switch h.(type) {
-			case *astStream:
-				tunes = append(tunes, h.(*astStream).tune)
-			default:
+		case *astStream:
+			tunes = append(tunes, h.(*astStream).tune)
+		default:
 		}
 	}
 	return summer(tunes...)
 }
-

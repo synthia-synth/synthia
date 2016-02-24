@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/draringi/synthia/waveforms"
+	"github.com/synthia-synth/synthia/waveforms"
 )
 
 type ToneGenerator struct {
