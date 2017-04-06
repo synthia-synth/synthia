@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"flag"
-	"io/ioutil"
+//	"flag"
+//	"io/ioutil"
 )
 
 //go:generate -command yacc go tool yacc
@@ -19,21 +19,26 @@ func usage(){
 }
 
 func main() {
-	flag.Parse()
-	args := flag.Args()
-	if len(args) < 1{
-		usage()
-		return
-	}
-	path := args[0]
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		println(err)
-		return
-	}
-	langParse(&langLex{line: data})
-	ast.Exec()
-	tune := ast.Tune()
+	//flag.Parse()
+	//args := flag.Args()
+	//if len(args) < 1{
+	//	usage()
+	//	return
+	//}
+	//path := args[0]
+	//data, err := ioutil.ReadFile(path)
+	//if err != nil {
+	//	println(err)
+	//	return
+	//}
+	//langParse(&langLex{line: data})
+	//ast.Exec()
+	//tune := ast.Tune()
+	//tune := whitenoise(int(glsampleRate * 5))
+	var tune []int32
+	tune = append(tune, pluck(234, 1.2)...)
+	tune = append(tune, pluck(334, 1.3)...)
+	tune = append(tune, pluck(444, 1.4)...)
 	fmt.Println("Tune Generated. Playing...")
 	playTune(tune, glsampleRate)
 
