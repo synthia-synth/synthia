@@ -1,5 +1,5 @@
 %{
-package main
+package synthia
 import (
 	"log"
 	"strconv"

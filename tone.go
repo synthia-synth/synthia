@@ -1,4 +1,4 @@
-package main
+package synthia
 
 import (
 	"github.com/synthia-synth/synthia/waveforms"
@@ -21,13 +21,13 @@ func NewToneGenerator(sampleRate float64, wave waveforms.Wave) *ToneGenerator {
 	return t
 }
 
-//Generates a square wave
-func (t *ToneGenerator) Tone(freq, seconds float64, vol int32) []int32 {
-	var synthArray = make([]int32, int(seconds*t.sampleRate))
+//Generates a wave
+func (t *ToneGenerator) Tone(freq, seconds float64, vol int32) []TimeDomain {
+	var synthArray = make([]TimeDomain, int(seconds*t.sampleRate))
 	delta := freq * t.step
 
 	for i := 0; i < len(synthArray); i++ {
-		synthArray[i] = int32(t.wave(float64(i)*delta) * float64(vol))
+		synthArray[i] = TimeDomain(t.wave(float64(i)*delta) * float64(vol))
 
 	}
 	return synthArray

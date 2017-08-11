@@ -1,5 +1,5 @@
 //line lang.y:2
-package main
+package synthia
 
 import __yyfmt__ "fmt"
 
@@ -61,7 +61,7 @@ var langStatenames = [...]string{}
 
 const langEofCode = 1
 const langErrCode = 2
-const langMaxDepth = 200
+const langInitialStackSize = 16
 
 //line lang.y:150
 
@@ -386,18 +386,17 @@ type langParser interface {
 }
 
 type langParserImpl struct {
-	lookahead func() int
+	lval  langSymType
+	stack [langInitialStackSize]langSymType
+	char  int
 }
 
 func (p *langParserImpl) Lookahead() int {
-	return p.lookahead()
+	return p.char
 }
 
 func langNewParser() langParser {
-	p := &langParserImpl{
-		lookahead: func() int { return -1 },
-	}
-	return p
+	return &langParserImpl{}
 }
 
 const langFlag = -1000
@@ -525,22 +524,20 @@ func langParse(langlex langLexer) int {
 
 func (langrcvr *langParserImpl) Parse(langlex langLexer) int {
 	var langn int
-	var langlval langSymType
 	var langVAL langSymType
 	var langDollar []langSymType
 	_ = langDollar // silence set and not used
-	langS := make([]langSymType, langMaxDepth)
+	langS := langrcvr.stack[:]
 
 	Nerrs := 0   /* number of errors */
 	Errflag := 0 /* error recovery flag */
 	langstate := 0
-	langchar := -1
-	langtoken := -1 // langchar translated into internal numbering
-	langrcvr.lookahead = func() int { return langchar }
+	langrcvr.char = -1
+	langtoken := -1 // langrcvr.char translated into internal numbering
 	defer func() {
 		// Make sure we report no lookahead when not parsing.
 		langstate = -1
-		langchar = -1
+		langrcvr.char = -1
 		langtoken = -1
 	}()
 	langp := -1
@@ -572,8 +569,8 @@ langnewstate:
 	if langn <= langFlag {
 		goto langdefault /* simple state */
 	}
-	if langchar < 0 {
-		langchar, langtoken = langlex1(langlex, &langlval)
+	if langrcvr.char < 0 {
+		langrcvr.char, langtoken = langlex1(langlex, &langrcvr.lval)
 	}
 	langn += langtoken
 	if langn < 0 || langn >= langLast {
@@ -581,9 +578,9 @@ langnewstate:
 	}
 	langn = langAct[langn]
 	if langChk[langn] == langtoken { /* valid shift */
-		langchar = -1
+		langrcvr.char = -1
 		langtoken = -1
-		langVAL = langlval
+		langVAL = langrcvr.lval
 		langstate = langn
 		if Errflag > 0 {
 			Errflag--
@@ -595,8 +592,8 @@ langdefault:
 	/* default state action */
 	langn = langDef[langstate]
 	if langn == -2 {
-		if langchar < 0 {
-			langchar, langtoken = langlex1(langlex, &langlval)
+		if langrcvr.char < 0 {
+			langrcvr.char, langtoken = langlex1(langlex, &langrcvr.lval)
 		}
 
 		/* look through exception table */
@@ -659,7 +656,7 @@ langdefault:
 			if langtoken == langEofCode {
 				goto ret1
 			}
-			langchar = -1
+			langrcvr.char = -1
 			langtoken = -1
 			goto langnewstate /* try again in the same state */
 		}

@@ -1,4 +1,4 @@
-package main
+package synthia
 
 import (
 	"errors"
@@ -38,30 +38,30 @@ func (f setBPMWrapper) Exec(args []expression) {
 type astStream struct {
 	instructions []instruction
 	label        string
-	tune         []int32
+	tune         []TimeDomain
 }
 
-func (s *astStream) Header() {
-	var tune []int32
+func (s *astStream) Header(samplerate float64) {
+	var tune []TimeDomain
 	for _, i := range s.instructions {
-		i.Exec()
+		i.Exec(samplerate)
 		tune = append(tune, i.(*methodCall).tune...)
 	}
 	s.tune = tune
 }
 
 type instruction interface {
-	Exec()
+	Exec(samplerate float64)
 }
 
 type methodCall struct {
 	obj       *object
 	method    string
 	arguments []expression
-	tune      []int32
+	tune      []TimeDomain
 }
 
-func (m *methodCall) Exec() {
+func (m *methodCall) Exec(samplerate float64) {
 	gen := instruments[m.obj.label]
 	if gen == nil {
 		panic("Not a valid generator!!!")
@@ -75,7 +75,7 @@ func (m *methodCall) Exec() {
 		m.tune = n.GenerateTone(gen)
 	case *chordExpression:
 		chordInfo := play.(*chordExpression)
-		var notes [][]int32
+		var notes [][]TimeDomain
 		for _, n := range chordInfo.notes {
 			print(n)
 			note := NewNote(n.note, n.octave, n.accidental, timing.timing, timing.modifier)
@@ -146,13 +146,13 @@ type functionCall struct {
 	arguments []expression
 }
 
-func (f *functionCall) Exec() {
+func (f *functionCall) Exec(samplerate float64) {
 	callable := functions[f.label]
 	callable.Exec(f.arguments)
 }
 
-func (s *functionCall) Header() {
-	s.Exec()
+func (s *functionCall) Header(samplerate float64) {
+	s.Exec(samplerate)
 }
 
 type instrumentInstance struct {
@@ -160,14 +160,14 @@ type instrumentInstance struct {
 	inst  instrument
 }
 
-func (i *instrumentInstance) Exec() {
+func (i *instrumentInstance) Exec(samplerate float64) {
 	toneI := i.inst.(*tone)
-	generator := NewToneGenerator(glsampleRate, toneI.wave)
+	generator := NewToneGenerator(samplerate, toneI.wave)
 	instruments[i.label] = generator
 }
 
-func (s *instrumentInstance) Header() {
-	s.Exec()
+func (s *instrumentInstance) Header(samplerate float64) {
+	s.Exec(samplerate)
 }
 
 type instrument interface {
@@ -255,20 +255,20 @@ func instrumentLookup(module, name string) (instrument, error) {
 }
 
 type header interface {
-	Header()
+	Header(samplerate float64)
 }
 
 type AST []header
 
-func (a AST) Exec() {
+func (a AST) Exec(samplerate float64) {
 	headers := ([]header)(a)
 	for _, h := range headers {
-		h.Header()
+		h.Header(samplerate)
 	}
 }
 
-func (a AST) Tune() []int32 {
-	var tunes [][]int32
+func (a AST) Tune() []TimeDomain {
+	var tunes [][]TimeDomain
 	headers := ([]header)(a)
 	for _, h := range headers {
 		switch h.(type) {

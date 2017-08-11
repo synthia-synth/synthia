@@ -1,10 +1,10 @@
-package main
+package synthia
 
 import (
 	"math"
 )
 
-func adsr1(signal []int32) []int32 {
+func adsr1(signal []TimeDomain) []TimeDomain {
 	const riseSamples, decaySamples, releaseSamples = 200, 400, 200
 	const sustainLvl = .7
 	var baseNeed = int(riseSamples + decaySamples + releaseSamples)
@@ -19,23 +19,23 @@ func adsr1(signal []int32) []int32 {
 
 	for i := 0; i < stoppingPoint; i++ { //Rise (lin)
 		curve = float64(i) / float64(riseSamples)
-		signal[i] = signal[i] * int32(curve)
+		signal[i] = signal[i] * TimeDomain(curve)
 	}
 	stoppingPoint = riseSamples + decaySamples
 	var lambda = float64(decaySamples) / math.Log(sustainLvl)
 	for i := riseSamples; i < stoppingPoint; i++ { //Decay (exp)
 		curve = math.Exp(float64(i-riseSamples+1) / lambda)
-		signal[i] = signal[i] * int32(curve)
+		signal[i] = signal[i] * TimeDomain(curve)
 	}
 	stoppingPoint = len(signal) - releaseSamples
 	for i := riseSamples + decaySamples; i < stoppingPoint; i++ { //Sustain (const)
-		signal[i] = int32(float64(signal[i]) * sustainLvl)
+		signal[i] = TimeDomain(float64(signal[i]) * sustainLvl)
 	}
 	stoppingPoint = len(signal)
 	lambda = float64(releaseSamples) / math.Log(sustainLvl)
 	for i := len(signal) - releaseSamples; i < stoppingPoint; i++ { //Release (exp)
 		curve = sustainLvl * math.Exp(float64(i-len(signal)-releaseSamples+1)/lambda)
-		signal[i] = signal[i] * int32(curve)
+		signal[i] = signal[i] * TimeDomain(curve)
 	}
 
 	return signal
