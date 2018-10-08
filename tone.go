@@ -4,17 +4,26 @@ import (
 	"github.com/synthia-synth/synthia/waveforms"
 )
 
-type ToneGenerator struct {
+type ToneGenerator interface {
+	Play(freq, seconds float64, vol int32) []TimeDomain
+}
+
+type ToneSimulator interface {
+	ToneGenerator
+	SetSampleRate(sampleRate float64)
+}
+
+type WaveToneGenerator struct {
 	sampleRate float64
 	step       float64 //delta t
 	wave       waveforms.Wave
 }
 
-func NewToneGenerator(sampleRate float64, wave waveforms.Wave) *ToneGenerator {
+func NewWavetoneGenerator(sampleRate float64, wave waveforms.Wave) *WaveToneGenerator {
 	if sampleRate < 1 {
 		return nil
 	}
-	t := new(ToneGenerator)
+	t := new(WaveToneGenerator)
 	t.sampleRate = sampleRate
 	t.step = 1. / sampleRate
 	t.wave = wave
@@ -22,7 +31,7 @@ func NewToneGenerator(sampleRate float64, wave waveforms.Wave) *ToneGenerator {
 }
 
 //Generates a wave
-func (t *ToneGenerator) Tone(freq, seconds float64, vol int32) []TimeDomain {
+func (t *WaveToneGenerator) Play(freq, seconds float64, vol int32) []TimeDomain {
 	var synthArray = make([]TimeDomain, int(seconds*t.sampleRate))
 	delta := freq * t.step
 

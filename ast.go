@@ -10,7 +10,7 @@ var (
 	functions = map[string]function{
 		"setBPM": (setBPMWrapper)(setBPM),
 	}
-	instruments map[string]*ToneGenerator = map[string]*ToneGenerator{}
+	instruments map[string]ToneGenerator = map[string]ToneGenerator{}
 )
 
 var ast AST
@@ -161,8 +161,16 @@ type instrumentInstance struct {
 }
 
 func (i *instrumentInstance) Exec(samplerate float64) {
-	toneI := i.inst.(*tone)
-	generator := NewToneGenerator(samplerate, toneI.wave)
+	var generator ToneGenerator
+	switch t := i.inst.(type) {
+	case *tone:
+		generator = NewWavetoneGenerator(samplerate, t.wave)
+	case *simulation:
+		generator = t.simulator(samplerate)
+	default:
+		panic("Unknown instrument type")
+	}
+
 	instruments[i.label] = generator
 }
 
@@ -192,6 +200,19 @@ func (t *tone) Type() string {
 	return "ToneGenerator"
 }
 
+type simulation struct {
+	name      string
+	simulator func(samplerate float64) ToneSimulator
+}
+
+func (s *simulation) Name() string {
+	return s.name
+}
+
+func (s *simulation) Type() string {
+	return "Simulator"
+}
+
 type instrumentModule map[string]instrument
 
 var (
@@ -200,6 +221,7 @@ var (
 	sawwave    = &tone{wave: waveforms.Saw, name: "saw"}
 	sqrwave    = &tone{wave: waveforms.Sqr, name: "square"}
 	nullwave   = &tone{wave: waveforms.Null, name: "null"}
+	plucker    = &simulation{simulator: NewPlucker, name: "pluck"}
 	toneLookup = map[string]instrument{
 		sinwave.name:  sinwave,
 		triwave.name:  triwave,
@@ -207,8 +229,12 @@ var (
 		sqrwave.name:  sqrwave,
 		nullwave.name: nullwave,
 	}
+	simLookup = map[string]instrument{
+		plucker.name: plucker,
+	}
 	instroModules = map[string]instrumentModule{
 		"tone": toneLookup,
+		"sim":  simLookup,
 	}
 	timingLookup = map[string]NoteLen{
 		"breve":                      Breve,

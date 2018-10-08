@@ -94,6 +94,6 @@ func NewNote(note NoteName, octave int, accidental Accidental, length NoteLen, l
 	return n
 }
 
-func (n *Note) GenerateTone(generator *ToneGenerator) []TimeDomain {
-	return adsr1(generator.Tone(n.Frequency(), lengthToDuration(n.length, n.lengthModifier), n.vol))
+func (n *Note) GenerateTone(generator ToneGenerator) []TimeDomain {
+	return adsr1(generator.Play(n.Frequency(), lengthToDuration(n.length, n.lengthModifier), n.vol))
 }

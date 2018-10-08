@@ -1,7 +1,7 @@
 package synthia
 
 type SignalWriter interface {
-	WriteSignal(s []TimeDomain, samplerate float64)  error
+	WriteSignal(s []TimeDomain, samplerate float64) error
 }
 
 type PCMWriter interface {
@@ -16,7 +16,7 @@ type Signal2PCMWriter struct {
 	pcmWriter PCMWriter
 }
 
-func (w Signal2PCMWriter) WriteSignal(s []TimeDomain, samplerate float64)  error {
+func (w Signal2PCMWriter) WriteSignal(s []TimeDomain, samplerate float64) error {
 	return w.pcmWriter.WritePCM(TimeDomain2PCM(s), samplerate)
 }
 

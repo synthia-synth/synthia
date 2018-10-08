@@ -12,7 +12,7 @@ func summer(channels ...[]TimeDomain) []TimeDomain {
 	var sum = make([]TimeDomain, maxSize)
 	for i := 0; i < maxSize; i++ { // current time
 		for _, ch := range channels { //Each channel
-			sum[i] +=  ch[i]/numChan
+			sum[i] += ch[i] / numChan
 		}
 	}
 
