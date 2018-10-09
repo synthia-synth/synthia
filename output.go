@@ -1,7 +1,9 @@
 package synthia
 
+import "github.com/synthia-synth/synthia/domains"
+
 type SignalWriter interface {
-	WriteSignal(s []TimeDomain, samplerate float64) error
+	WriteSignal(s []domains.Time, samplerate float64) error
 }
 
 type PCMWriter interface {
@@ -9,15 +11,15 @@ type PCMWriter interface {
 }
 
 type FrequencyWriter interface {
-	WriteFreqDomain(s []FreqDomain) error
+	WriteFreqDomain(s []domains.Frequency) error
 }
 
 type Signal2PCMWriter struct {
 	pcmWriter PCMWriter
 }
 
-func (w Signal2PCMWriter) WriteSignal(s []TimeDomain, samplerate float64) error {
-	return w.pcmWriter.WritePCM(TimeDomain2PCM(s), samplerate)
+func (w Signal2PCMWriter) WriteSignal(s []domains.Time, samplerate float64) error {
+	return w.pcmWriter.WritePCM(domains.TimeDomain2PCM(s), samplerate)
 }
 
 func (w Signal2PCMWriter) WritePCM(p []int32, samplerate float64) error {

@@ -3,6 +3,7 @@ package synthia
 import (
 	"errors"
 	"github.com/synthia-synth/synthia/waveforms"
+	"github.com/synthia-synth/synthia/domains"
 )
 
 var (
@@ -38,11 +39,11 @@ func (f setBPMWrapper) Exec(args []expression) {
 type astStream struct {
 	instructions []instruction
 	label        string
-	tune         []TimeDomain
+	tune         []domains.Time
 }
 
 func (s *astStream) Header(samplerate float64) {
-	var tune []TimeDomain
+	var tune []domains.Time
 	for _, i := range s.instructions {
 		i.Exec(samplerate)
 		tune = append(tune, i.(*methodCall).tune...)
@@ -58,7 +59,7 @@ type methodCall struct {
 	obj       *object
 	method    string
 	arguments []expression
-	tune      []TimeDomain
+	tune      []domains.Time
 }
 
 func (m *methodCall) Exec(samplerate float64) {
@@ -75,7 +76,7 @@ func (m *methodCall) Exec(samplerate float64) {
 		m.tune = n.GenerateTone(gen)
 	case *chordExpression:
 		chordInfo := play.(*chordExpression)
-		var notes [][]TimeDomain
+		var notes [][]domains.Time
 		for _, n := range chordInfo.notes {
 			print(n)
 			note := NewNote(n.note, n.octave, n.accidental, timing.timing, timing.modifier)
@@ -170,7 +171,7 @@ func (i *instrumentInstance) Exec(samplerate float64) {
 	default:
 		panic("Unknown instrument type")
 	}
-
+	
 	instruments[i.label] = generator
 }
 
@@ -201,7 +202,7 @@ func (t *tone) Type() string {
 }
 
 type simulation struct {
-	name      string
+	name string
 	simulator func(samplerate float64) ToneSimulator
 }
 
@@ -221,7 +222,7 @@ var (
 	sawwave    = &tone{wave: waveforms.Saw, name: "saw"}
 	sqrwave    = &tone{wave: waveforms.Sqr, name: "square"}
 	nullwave   = &tone{wave: waveforms.Null, name: "null"}
-	plucker    = &simulation{simulator: NewPlucker, name: "pluck"}
+	plucker = &simulation{simulator: NewPlucker, name: "pluck"}
 	toneLookup = map[string]instrument{
 		sinwave.name:  sinwave,
 		triwave.name:  triwave,
@@ -234,7 +235,7 @@ var (
 	}
 	instroModules = map[string]instrumentModule{
 		"tone": toneLookup,
-		"sim":  simLookup,
+		"sim":simLookup,
 	}
 	timingLookup = map[string]NoteLen{
 		"breve":                      Breve,
@@ -293,8 +294,8 @@ func (a AST) Exec(samplerate float64) {
 	}
 }
 
-func (a AST) Tune() []TimeDomain {
-	var tunes [][]TimeDomain
+func (a AST) Tune() []domains.Time {
+	var tunes [][]domains.Time
 	headers := ([]header)(a)
 	for _, h := range headers {
 		switch h.(type) {

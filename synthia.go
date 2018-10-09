@@ -3,12 +3,15 @@ package synthia
 //go:generate -command yacc go tool yacc
 //go:generate yacc -o lang.go -p "lang" lang.y
 
-import "io/ioutil"
+import (
+	"io/ioutil"
+	"github.com/synthia-synth/synthia/domains"
+)
 
-func FileToTune(path string, samplerate float64) ([]TimeDomain, error) {
+func FileToTune(path string, samplerate float64) ([]domains.Time, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return []TimeDomain{}, err
+		return []domains.Time{}, err
 	}
 	langParse(&langLex{line: data})
 	ast.Exec(samplerate)

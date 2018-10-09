@@ -2,10 +2,11 @@ package synthia
 
 import (
 	"github.com/synthia-synth/synthia/waveforms"
+	"github.com/synthia-synth/synthia/domains"
 )
 
 type ToneGenerator interface {
-	Play(freq, seconds float64, vol int32) []TimeDomain
+	Play(freq, seconds float64, vol int32) []domains.Time
 }
 
 type ToneSimulator interface {
@@ -31,12 +32,12 @@ func NewWavetoneGenerator(sampleRate float64, wave waveforms.Wave) *WaveToneGene
 }
 
 //Generates a wave
-func (t *WaveToneGenerator) Play(freq, seconds float64, vol int32) []TimeDomain {
-	var synthArray = make([]TimeDomain, int(seconds*t.sampleRate))
+func (t *WaveToneGenerator) Play(freq, seconds float64, vol int32) []domains.Time {
+	var synthArray = make([]domains.Time, int(seconds*t.sampleRate))
 	delta := freq * t.step
 
 	for i := 0; i < len(synthArray); i++ {
-		synthArray[i] = TimeDomain(t.wave(float64(i)*delta) * float64(vol))
+		synthArray[i] = domains.Time(t.wave(float64(i)*delta) * float64(vol))
 
 	}
 	return synthArray
